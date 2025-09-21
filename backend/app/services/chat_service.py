@@ -41,6 +41,11 @@ def append_message(db: Session, thread_id: str, data: ChatMessageCreate, auto_re
     if thread is None:
         raise ValueError("Chat thread not found")
 
+    conversation_context = [
+        {"role": entry.role, "content": entry.content}
+        for entry in sorted(thread.messages, key=lambda m: m.created_at)
+    ]
+
     message = ChatMessage(thread_id=thread_id, role=data.role, content=data.content)
     db.add(message)
     db.flush()
@@ -48,11 +53,7 @@ def append_message(db: Session, thread_id: str, data: ChatMessageCreate, auto_re
     messages_to_return = [message]
 
     if auto_reply and data.role == "user":
-        conversation = [
-            {"role": entry.role, "content": entry.content}
-            for entry in thread.messages
-        ]
-        conversation.append({"role": data.role, "content": data.content})
+        conversation = [*conversation_context, {"role": data.role, "content": data.content}]
         assistant_content = llm_client.generate_reply(conversation)
         assistant_message = ChatMessage(thread_id=thread_id, role="assistant", content=assistant_content)
         db.add(assistant_message)

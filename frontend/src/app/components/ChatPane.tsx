@@ -26,6 +26,8 @@ export function ChatPane({
 }: Props) {
   const [draft, setDraft] = useState('');
 
+  const isSubmitDisabled = isSending || !draft.trim();
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft.trim()) {
@@ -82,7 +84,7 @@ export function ChatPane({
           placeholder="Ask a question about the SOP..."
           rows={3}
         />
-        <button type="submit" className={styles.primaryButton} disabled={isSending || !selectedThreadId}>
+        <button type="submit" className={styles.primaryButton} disabled={isSubmitDisabled}>
           {isSending ? 'Sending…' : 'Send'}
         </button>
       </form>
