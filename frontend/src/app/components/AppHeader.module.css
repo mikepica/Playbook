@@ -1,0 +1,66 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 70px;
+  background: linear-gradient(90deg, #1f78ff, #6b5bff);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.nav {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  margin: 0 1rem;
+}
+
+.sopButton {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  color: inherit;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.sopButton:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.active {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.title {
+  font-weight: 600;
+}
+
+.meta {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.refreshButton {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0.75rem;
+  color: inherit;
+  padding: 0.4rem 0.9rem;
+}
+
+.refreshButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
