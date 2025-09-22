@@ -77,6 +77,36 @@ const Link = ({ children, href }: { children?: ReactNode; href?: string }) => (
   </a>
 );
 
+// Component to handle text with citations
+const TextWithCitations = ({ children }: { children?: string }) => {
+  if (!children || typeof children !== 'string') {
+    return <>{children}</>;
+  }
+
+  const parts = children.split(/(\[SOP:\s*[^\]]+\])/g);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const match = part.match(/^\[SOP:\s*([^\]]+)\]$/);
+        if (match) {
+          const sopTitle = match[1];
+          return (
+            <span
+              key={index}
+              className={styles.sopCitation}
+              title={`Source: ${sopTitle}`}
+            >
+              [{sopTitle}]
+            </span>
+          );
+        }
+        return part;
+      })}
+    </>
+  );
+};
+
 export function MarkdownRenderer({ children, className }: Props) {
   return (
     <div className={`${styles.markdownContent} ${className || ''}`}>
@@ -100,6 +130,8 @@ export function MarkdownRenderer({ children, className }: Props) {
           h5: ({ children }) => <Heading level={5}>{children}</Heading>,
           h6: ({ children }) => <Heading level={6}>{children}</Heading>,
           a: Link,
+          // Handle text nodes to process citations
+          text: ({ children }) => <TextWithCitations>{children}</TextWithCitations>,
         }}
       >
         {children}
