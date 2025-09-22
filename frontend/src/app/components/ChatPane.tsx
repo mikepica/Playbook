@@ -3,13 +3,14 @@
 import { FormEvent, useState } from 'react';
 
 import { ChatMessage, ChatThread } from '@/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import styles from './ChatPane.module.css';
 
 interface Props {
   threads: ChatThread[];
   selectedThreadId?: string | null;
   onSelectThread: (id: string) => void;
-  onCreateThread: () => Promise<string> | void;
+  onCreateThread: () => Promise<string | undefined> | void;
   messages: ChatMessage[];
   onSendMessage: (content: string) => Promise<void>;
   isSending: boolean;
@@ -71,7 +72,9 @@ export function ChatPane({
           messages.map((message) => (
             <article key={message.id} className={`${styles.message} ${styles[message.role]}`}>
               <span className={styles.role}>{message.role === 'user' ? 'You' : 'Assistant'}</span>
-              <p>{message.content}</p>
+              <div className={styles.messageContent}>
+                <MarkdownRenderer>{message.content}</MarkdownRenderer>
+              </div>
             </article>
           ))
         )}

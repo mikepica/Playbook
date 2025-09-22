@@ -21,6 +21,25 @@
   margin: 0;
 }
 
+.titleInput {
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: 1px solid #d0d7e2;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #ffffff;
+  color: #1f2933;
+  width: 100%;
+  max-width: 400px;
+  transition: border-color 0.2s ease;
+}
+
+.titleInput:focus {
+  outline: none;
+  border-color: #1f78ff;
+  box-shadow: 0 0 0 3px rgba(31, 120, 255, 0.1);
+}
+
 .subtle {
   margin: 0.25rem 0 0;
   color: #607089;

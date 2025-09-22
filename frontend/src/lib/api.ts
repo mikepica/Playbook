@@ -1,4 +1,4 @@
-import { ChatMessage, ChatThread, SOP } from '@/types';
+import { ChatMessage, ChatThread, SOP, SOPSummary } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api';
 
@@ -24,11 +24,18 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getSOPSummaries() {
-  return fetchJSON<{ items: Array<Pick<SOP, 'id' | 'title' | 'version' | 'updated_at'>> }>(`/sops/`);
+  return fetchJSON<{ items: SOPSummary[] }>(`/sops/`);
 }
 
 export async function getSOP(id: string) {
   return fetchJSON<SOP>(`/sops/${id}`);
+}
+
+export async function createSOP(payload: { title: string; content: SOP['content'] }) {
+  return fetchJSON<SOP>(`/sops/`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function updateSOP(id: string, payload: { title?: string; content?: SOP['content']; edited_by?: string | null }) {

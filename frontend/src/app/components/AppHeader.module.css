@@ -7,6 +7,9 @@
   background: linear-gradient(90deg, #1f78ff, #6b5bff);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .brand {
@@ -51,6 +54,24 @@
 .meta {
   font-size: 0.75rem;
   opacity: 0.8;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.addButton {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0.75rem;
+  color: inherit;
+  padding: 0.4rem 0.9rem;
+  font-weight: 500;
+}
+
+.addButton:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .refreshButton {

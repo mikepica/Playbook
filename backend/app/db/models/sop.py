@@ -21,6 +21,7 @@ class SOP(Base, TimestampMixin):
     title = Column(String(255), nullable=False, unique=True)
     version = Column(Integer, nullable=False, default=1)
     content = Column(JSON, nullable=False)
+    display_order = Column(Integer, nullable=False, default=0)
 
     histories = relationship("SOPHistory", back_populates="sop", cascade="all, delete-orphan", passive_deletes=True)
     chat_threads = relationship("ChatThread", back_populates="sop")

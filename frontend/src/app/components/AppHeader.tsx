@@ -8,9 +8,10 @@ interface Props {
   selectedId?: string | null;
   onSelect: (id: string) => void;
   onRefresh: () => void;
+  onAddSOP: () => void;
 }
 
-export function AppHeader({ items, selectedId, onSelect, onRefresh }: Props) {
+export function AppHeader({ items, selectedId, onSelect, onRefresh, onAddSOP }: Props) {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>PMO Playbook</div>
@@ -27,9 +28,14 @@ export function AppHeader({ items, selectedId, onSelect, onRefresh }: Props) {
           </button>
         ))}
       </nav>
-      <button className={styles.refreshButton} type="button" onClick={onRefresh}>
-        Refresh
-      </button>
+      <div className={styles.actions}>
+        <button className={styles.addButton} type="button" onClick={onAddSOP}>
+          New SOP
+        </button>
+        <button className={styles.refreshButton} type="button" onClick={onRefresh}>
+          Refresh
+        </button>
+      </div>
     </header>
   );
 }

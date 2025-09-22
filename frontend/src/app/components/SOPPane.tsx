@@ -1,10 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import { SOP } from '@/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import styles from './SOPPane.module.css';
 
 interface Props {
@@ -13,12 +12,14 @@ interface Props {
   onToggleEdit: () => void;
   editorValue: string;
   onEditorChange: (value: string) => void;
+  titleValue: string;
+  onTitleChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
   isSaving: boolean;
 }
 
-export function SOPPane({ sop, isEditing, onToggleEdit, editorValue, onEditorChange, onSave, onCancel, isSaving }: Props) {
+export function SOPPane({ sop, isEditing, onToggleEdit, editorValue, onEditorChange, titleValue, onTitleChange, onSave, onCancel, isSaving }: Props) {
   const markdown = useMemo(() => {
     if (!sop) {
       return '';
@@ -45,7 +46,17 @@ export function SOPPane({ sop, isEditing, onToggleEdit, editorValue, onEditorCha
     <section className={styles.container}>
       <header className={styles.sectionHeader}>
         <div>
-          <h2>{sop.title}</h2>
+          {isEditing ? (
+            <input
+              type="text"
+              className={styles.titleInput}
+              value={titleValue}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder="SOP Title"
+            />
+          ) : (
+            <h2>{sop.title}</h2>
+          )}
           <p className={styles.subtle}>Version {sop.version}</p>
         </div>
         <div className={styles.actions}>
@@ -76,7 +87,7 @@ export function SOPPane({ sop, isEditing, onToggleEdit, editorValue, onEditorCha
           />
         ) : (
           <article className={styles.markdown}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown || 'No content yet.'}</ReactMarkdown>
+            <MarkdownRenderer>{markdown || 'No content yet.'}</MarkdownRenderer>
           </article>
         )}
       </div>

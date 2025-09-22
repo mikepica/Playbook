@@ -2,6 +2,7 @@ export interface SOPSummary {
   id: string;
   title: string;
   version: number;
+  display_order: number;
   updated_at: string;
 }
 

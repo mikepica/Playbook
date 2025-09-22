@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 class SOPBase(BaseModel):
     title: str
     content: dict[str, Any] = Field(description="Markdown content and metadata stored as JSON")
+    display_order: int = Field(default=0, description="Display order for UI positioning")
 
 
 class SOPCreate(SOPBase):
@@ -19,6 +20,7 @@ class SOPCreate(SOPBase):
 class SOPUpdate(BaseModel):
     title: str | None = None
     content: dict[str, Any] | None = None
+    display_order: int | None = None
     edited_by: str | None = None
 
 
@@ -33,6 +35,7 @@ class SOPSummary(BaseModel):
     id: UUID
     title: str
     version: int
+    display_order: int
     updated_at: datetime
 
 

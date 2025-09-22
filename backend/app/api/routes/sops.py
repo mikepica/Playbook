@@ -27,6 +27,7 @@ def list_sops(db: Session = Depends(get_db)) -> SOPList:
                 id=sop.id,
                 title=sop.title,
                 version=sop.version,
+                display_order=sop.display_order,
                 updated_at=sop.updated_at,
             )
             for sop in sops
@@ -42,6 +43,7 @@ def create_sop(payload: SOPCreate, db: Session = Depends(get_db)) -> SOPRead:
         title=sop.title,
         version=sop.version,
         content=sop.content,
+        display_order=sop.display_order,
         created_at=sop.created_at,
         updated_at=sop.updated_at,
     )
@@ -58,6 +60,7 @@ def get_sop(sop_id: str, db: Session = Depends(get_db)) -> SOPRead:
         title=sop.title,
         version=sop.version,
         content=sop.content,
+        display_order=sop.display_order,
         created_at=sop.created_at,
         updated_at=sop.updated_at,
     )
@@ -75,6 +78,7 @@ def update_sop(sop_id: str, payload: SOPUpdate, db: Session = Depends(get_db)) -
         title=sop.title,
         version=sop.version,
         content=sop.content,
+        display_order=sop.display_order,
         created_at=sop.created_at,
         updated_at=sop.updated_at,
     )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -76,12 +76,17 @@ def get_thread(thread_id: str, db: Session = Depends(get_db)) -> ChatThreadDetai
 def post_message(
     thread_id: str,
     payload: ChatMessageCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> list[ChatMessageRead]:
     try:
         messages = chat_service.append_message(db, thread_id, payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    # If this is a user message and we got an AI response, trigger title generation in background
+    if payload.role == "user" and len(messages) >= 2:
+        background_tasks.add_task(chat_service.generate_thread_title, db, thread_id)
 
     return [
         ChatMessageRead(

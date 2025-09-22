@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { AddSOPModal } from '@/app/components/AddSOPModal';
 import { AppHeader } from '@/app/components/AppHeader';
 import { ChatPane } from '@/app/components/ChatPane';
 import { SOPPane } from '@/app/components/SOPPane';
-import { createThread, getSOP, getThread, getSOPSummaries, listThreads, postMessage, updateSOP } from '@/lib/api';
+import { createSOP, createThread, getSOP, getThread, getSOPSummaries, listThreads, postMessage, updateSOP } from '@/lib/api';
 import { ChatMessage, ChatThread, SOP, SOPSummary } from '@/types';
 
 export default function HomePage() {
@@ -13,6 +14,7 @@ export default function HomePage() {
   const [selectedSopId, setSelectedSopId] = useState<string | null>(null);
   const [activeSop, setActiveSop] = useState<SOP | null>(null);
   const [editorContent, setEditorContent] = useState('');
+  const [titleContent, setTitleContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -22,6 +24,9 @@ export default function HomePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [chatFeedback, setChatFeedback] = useState<string | null>(null);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCreatingSOP, setIsCreatingSOP] = useState(false);
 
   const markdown = useMemo(() => {
     if (!activeSop) return '';
@@ -69,15 +74,18 @@ export default function HomePage() {
     if (!selectedSopId) {
       setActiveSop(null);
       setEditorContent('');
+      setTitleContent('');
       return;
     }
 
     async function loadSop() {
+      if (!selectedSopId) return;
       try {
         const sop = await getSOP(selectedSopId);
         setActiveSop(sop);
         const content = typeof sop.content?.markdown === 'string' ? sop.content.markdown : '';
         setEditorContent(content);
+        setTitleContent(sop.title);
         setIsEditing(false);
       } catch (error) {
         console.error(error);
@@ -95,6 +103,7 @@ export default function HomePage() {
     }
 
     async function loadThread() {
+      if (!selectedThreadId) return;
       try {
         const thread = await getThread(selectedThreadId);
         setMessages(thread.messages);
@@ -112,6 +121,7 @@ export default function HomePage() {
     if (!activeSop) return;
     setIsEditing((value) => !value);
     setEditorContent(markdown);
+    setTitleContent(activeSop.title);
     setFeedback(null);
   };
 
@@ -121,7 +131,7 @@ export default function HomePage() {
     setFeedback(null);
     try {
       const payload = {
-        title: activeSop.title,
+        title: titleContent.trim() || activeSop.title,
         content: {
           ...activeSop.content,
           markdown: editorContent
@@ -130,6 +140,7 @@ export default function HomePage() {
       const updated = await updateSOP(activeSop.id, payload);
       setActiveSop(updated);
       setEditorContent(typeof updated.content?.markdown === 'string' ? updated.content.markdown : '');
+      setTitleContent(updated.title);
       setIsEditing(false);
       await refreshSopSummaries();
       setFeedback('SOP saved successfully.');
@@ -143,14 +154,15 @@ export default function HomePage() {
 
   const handleCancelEdit = () => {
     setEditorContent(markdown);
+    setTitleContent(activeSop?.title || '');
     setIsEditing(false);
   };
 
   const handleCreateThread = useCallback(async () => {
     try {
       const thread = await createThread({
-        title: activeSop ? `${activeSop.title} Q&A` : undefined,
-        sop_id: activeSop?.id
+        title: "New Conversation",
+        sop_id: null  // Set to null to access all SOPs instead of specific one
       });
       await refreshThreads();
       setSelectedThreadId(thread.id);
@@ -161,7 +173,7 @@ export default function HomePage() {
       setChatFeedback('Failed to create chat thread.');
       return undefined;
     }
-  }, [activeSop, refreshThreads]);
+  }, [refreshThreads]);
 
   const handleSendMessage = useCallback(
     async (content: string) => {
@@ -169,17 +181,27 @@ export default function HomePage() {
       setChatFeedback(null);
 
       try {
-        let threadId = selectedThreadId;
+        let threadId: string | null = selectedThreadId;
+        const isFirstMessage = !threadId || messages.length === 0;
+
         if (!threadId) {
-          threadId = await handleCreateThread();
-          if (!threadId) {
+          const newThreadId = await handleCreateThread();
+          if (!newThreadId) {
             return;
           }
+          threadId = newThreadId;
         }
 
         const response = await postMessage(threadId, { role: 'user', content });
         setMessages((prev) => [...prev, ...response]);
         setSelectedThreadId(threadId);
+
+        // If this was the first message, refresh threads after a short delay for title update
+        if (isFirstMessage) {
+          setTimeout(() => {
+            void refreshThreads();
+          }, 2000); // 2-second delay to allow background title generation
+        }
       } catch (error) {
         console.error(error);
         setChatFeedback('Failed to send message.');
@@ -187,19 +209,48 @@ export default function HomePage() {
         setIsSending(false);
       }
     },
-    [handleCreateThread, selectedThreadId]
+    [handleCreateThread, selectedThreadId, messages.length, refreshThreads]
   );
 
+  const handleAddSOP = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const handleCreateSOP = async (title: string, content: string) => {
+    setIsCreatingSOP(true);
+    setFeedback(null);
+    try {
+      const newSOP = await createSOP({
+        title,
+        content: { markdown: content }
+      });
+      await refreshSopSummaries();
+      setSelectedSopId(newSOP.id);
+      setIsAddModalOpen(false);
+      setFeedback('SOP created successfully.');
+    } catch (error) {
+      console.error(error);
+      setFeedback('Failed to create SOP.');
+    } finally {
+      setIsCreatingSOP(false);
+    }
+  };
+
   return (
-    <div>
+    <div className="appShell">
       <AppHeader
         items={sopSummaries}
         selectedId={selectedSopId}
         onSelect={setSelectedSopId}
         onRefresh={refreshSopSummaries}
+        onAddSOP={handleAddSOP}
       />
-      <main>
-        <div>
+      <main className="appMain">
+        <div className="appColumn">
           {feedback && <div style={{ marginBottom: '0.75rem', color: '#d23939' }}>{feedback}</div>}
           <SOPPane
             sop={activeSop}
@@ -207,13 +258,15 @@ export default function HomePage() {
             onToggleEdit={handleToggleEdit}
             editorValue={editorContent}
             onEditorChange={setEditorContent}
+            titleValue={titleContent}
+            onTitleChange={setTitleContent}
             onSave={handleSaveSop}
             onCancel={handleCancelEdit}
             isSaving={isSaving}
           />
         </div>
-        <div>
-          {chatFeedback && <div style={{ marginBottom: '0.75rem', color: '#d23939' }}>{chatFeedback}</div>}
+        <div className="appColumn">
+          {chatFeedback && <div style={{ marginBottom: '0.75rem', color: '#d23939', flexShrink: 0 }}>{chatFeedback}</div>}
           <ChatPane
             threads={threads}
             selectedThreadId={selectedThreadId}
@@ -225,6 +278,13 @@ export default function HomePage() {
           />
         </div>
       </main>
+
+      <AddSOPModal
+        isOpen={isAddModalOpen}
+        onClose={handleCloseAddModal}
+        onSave={handleCreateSOP}
+        isSaving={isCreatingSOP}
+      />
     </div>
   );
 }
