@@ -38,6 +38,15 @@ export function ChatPane({
     setDraft('');
   }
 
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (!isSubmitDisabled) {
+        handleSubmit(event as any);
+      }
+    }
+  }
+
   return (
     <aside className={styles.container}>
       <header className={styles.header}>
@@ -84,6 +93,7 @@ export function ChatPane({
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Ask a question about the SOP..."
           rows={3}
         />

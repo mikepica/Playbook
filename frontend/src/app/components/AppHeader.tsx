@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { SOPSummary, ProjectSummary, ProjectDocumentSelection } from '@/types';
+import { SOPSummary, ProjectSummary, ProjectDocumentSelection, ProjectSOPSummary, ProjectSOPSelection } from '@/types';
 import { HierarchicalProjectDropdown } from './HierarchicalProjectDropdown';
+import { ProjectSOPDropdown } from './ProjectSOPDropdown';
 import styles from './AppHeader.module.css';
 
 interface Props {
@@ -16,6 +17,12 @@ interface Props {
   onSelectProjectDocument?: (selection: ProjectDocumentSelection) => void;
   onRefreshProjects?: () => void;
   onAddProject?: () => void;
+  // Project SOPs props
+  projectSops?: ProjectSOPSummary[];
+  selectedProjectSOP?: ProjectSOPSelection | null;
+  onSelectProjectSOP?: (selection: ProjectSOPSelection | null) => void;
+  onRefreshProjectSOPs?: () => void;
+  onAddProjectSOP?: () => void;
 }
 
 export function AppHeader({
@@ -28,7 +35,12 @@ export function AppHeader({
   selectedProjectDocument,
   onSelectProjectDocument,
   onRefreshProjects,
-  onAddProject
+  onAddProject,
+  projectSops = [],
+  selectedProjectSOP,
+  onSelectProjectSOP,
+  onRefreshProjectSOPs,
+  onAddProjectSOP
 }: Props) {
   const [isSOPDropdownOpen, setIsSOPDropdownOpen] = useState(false);
 
@@ -96,6 +108,17 @@ export function AppHeader({
             onAddProject={onAddProject}
           />
         )}
+
+        {/* Project SOPs Dropdown */}
+        {onSelectProjectSOP && onRefreshProjectSOPs && (
+          <ProjectSOPDropdown
+            projectSops={projectSops}
+            selectedProjectSOP={selectedProjectSOP}
+            onSelectSOP={onSelectProjectSOP}
+            onRefreshProjectSOPs={onRefreshProjectSOPs}
+            onAddProjectSOP={onAddProjectSOP}
+          />
+        )}
       </nav>
       <div className={styles.actions}>
         <button className={styles.addButton} type="button" onClick={onAddSOP}>
@@ -112,6 +135,16 @@ export function AppHeader({
         {onRefreshProjects && (
           <button className={styles.refreshButton} type="button" onClick={onRefreshProjects}>
             Refresh Projects
+          </button>
+        )}
+        {onAddProjectSOP && (
+          <button className={styles.addButton} type="button" onClick={onAddProjectSOP}>
+            New Document Type
+          </button>
+        )}
+        {onRefreshProjectSOPs && (
+          <button className={styles.refreshButton} type="button" onClick={onRefreshProjectSOPs}>
+            Refresh Document Types
           </button>
         )}
       </div>

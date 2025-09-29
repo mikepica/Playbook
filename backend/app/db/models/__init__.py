@@ -4,10 +4,10 @@ from app.db.models.project import (
     Project,
     BusinessCase,
     ProjectCharter,
-    ProjectDocument,
-    ProjectStakeholder,
-    ProjectStatusReport,
-    ProjectRisk,
+)
+from app.db.models.project_sop import (
+    ProjectSOP,
+    ProjectSOPHistory,
 )
 
 __all__ = [
@@ -19,8 +19,6 @@ __all__ = [
     "Project",
     "BusinessCase",
     "ProjectCharter",
-    "ProjectDocument",
-    "ProjectStakeholder",
-    "ProjectStatusReport",
-    "ProjectRisk",
+    "ProjectSOP",
+    "ProjectSOPHistory",
 ]

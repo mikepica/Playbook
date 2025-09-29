@@ -1,4 +1,4 @@
-import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, Project, BusinessCase, ProjectCharter } from '@/types';
+import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, Project, BusinessCase, ProjectCharter, ProjectSOP, ProjectSOPSummary } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api';
 
@@ -143,5 +143,34 @@ export async function updateProjectCharter(projectId: string, charterId: string,
   return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters/${charterId}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
+  });
+}
+
+// Project SOP APIs (Global Document Type Templates)
+export async function getProjectSOPSummaries() {
+  return fetchJSON<{ items: ProjectSOPSummary[] }>(`/project-sops/`);
+}
+
+export async function getProjectSOP(id: string) {
+  return fetchJSON<ProjectSOP>(`/project-sops/${id}`);
+}
+
+export async function createProjectSOP(payload: { document_type: string; title: string; content: ProjectSOP['content']; display_order?: number; is_active?: boolean }) {
+  return fetchJSON<ProjectSOP>(`/project-sops/`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateProjectSOP(id: string, payload: { document_type?: string; title?: string; content?: ProjectSOP['content']; display_order?: number; is_active?: boolean; edited_by?: string | null }) {
+  return fetchJSON<ProjectSOP>(`/project-sops/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteProjectSOP(id: string) {
+  return fetchJSON<void>(`/project-sops/${id}`, {
+    method: 'DELETE'
   });
 }

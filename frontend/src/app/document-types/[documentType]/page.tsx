@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { AddSOPModal } from '@/app/components/AddSOPModal';
@@ -12,16 +12,16 @@ import { SOPPane } from '@/app/components/SOPPane';
 import { ProjectDocumentPane } from '@/app/components/ProjectDocumentPane';
 import { ProjectSOPPane } from '@/app/components/ProjectSOPPane';
 import { createSOP, createThread, getSOP, getThread, getSOPSummaries, listThreads, postMessage, updateSOP, getProjectSummaries, getBusinessCases, getProjectCharters, getCurrentBusinessCase, getCurrentProjectCharter, updateBusinessCase, updateProjectCharter, createProject, createBusinessCase, createProjectCharter, getProjectSOPSummaries, getProjectSOP, createProjectSOP, updateProjectSOP } from '@/lib/api';
-import { findSOPBySlug, titleToSlug, projectNameToSlug, documentTypeToSlug } from '@/lib/utils';
+import { findSOPBySlug, titleToSlug, projectNameToSlug, documentTypeToSlug, findProjectSOPBySlug } from '@/lib/utils';
 import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, ProjectDocumentSelection, ProjectDocument, DocumentType, ProjectSOPSummary, ProjectSOPSelection, ProjectSOP } from '@/types';
 
-interface PlaybookPageProps {
+interface DocumentTypePageProps {
   params: {
-    slug: string;
+    documentType: string;
   };
 }
 
-export default function PlaybookPage({ params }: PlaybookPageProps) {
+export default function DocumentTypePage({ params }: DocumentTypePageProps) {
   const router = useRouter();
   const [sopSummaries, setSopSummaries] = useState<SOPSummary[]>([]);
   const [selectedSopId, setSelectedSopId] = useState<string | null>(null);
@@ -68,37 +68,15 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
   const [projectSOPTitleContent, setProjectSOPTitleContent] = useState('');
   const [isSavingProjectSOP, setIsSavingProjectSOP] = useState(false);
 
-  const markdown = useMemo(() => {
-    if (!activeSop) return '';
-    if (typeof activeSop.content?.markdown === 'string') {
-      return activeSop.content.markdown;
-    }
-    if (typeof activeSop.content === 'string') {
-      return activeSop.content;
-    }
-    return '';
-  }, [activeSop]);
-
   const refreshSopSummaries = useCallback(async () => {
     try {
       const response = await getSOPSummaries();
       setSopSummaries(response.items);
-
-      // Find SOP by slug and set as selected
-      const sopFromSlug = findSOPBySlug(response.items, params.slug);
-      if (sopFromSlug) {
-        setSelectedSopId(sopFromSlug.id);
-      } else if (response.items.length > 0) {
-        // If no matching SOP found, redirect to the first available SOP
-        const firstSop = response.items[0];
-        const firstSopSlug = titleToSlug(firstSop.title);
-        router.replace(`/playbook/${firstSopSlug}`);
-      }
     } catch (error) {
       console.error(error);
       setFeedback('Failed to load SOP list.');
     }
-  }, [params.slug, router]);
+  }, []);
 
   const refreshThreads = useCallback(async () => {
     try {
@@ -127,69 +105,24 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
     try {
       const response = await getProjectSOPSummaries();
       setProjectSops(response.items);
+
+      // Find the project SOP based on document type slug and set it as selected
+      const projectSOP = findProjectSOPBySlug(response.items, params.documentType);
+      if (projectSOP) {
+        setSelectedProjectSOP({ sopId: projectSOP.id });
+      }
     } catch (error) {
       console.error(error);
       setFeedback('Failed to load document types.');
     }
-  }, []);
+  }, [params.documentType]);
 
   useEffect(() => {
     void refreshSopSummaries();
     void refreshThreads();
     void refreshProjects();
     void refreshProjectSOPs();
-
-    // Clear project document and project SOP selections when on playbook route
-    setSelectedProjectDocument(null);
-    setSelectedProjectSOP(null);
   }, [refreshSopSummaries, refreshThreads, refreshProjects, refreshProjectSOPs]);
-
-  useEffect(() => {
-    if (!selectedSopId) {
-      setActiveSop(null);
-      setEditorContent('');
-      setTitleContent('');
-      return;
-    }
-
-    async function loadSop() {
-      if (!selectedSopId) return;
-      try {
-        const sop = await getSOP(selectedSopId);
-        setActiveSop(sop);
-        const content = typeof sop.content?.markdown === 'string' ? sop.content.markdown : '';
-        setEditorContent(content);
-        setTitleContent(sop.title);
-        setIsEditing(false);
-      } catch (error) {
-        console.error(error);
-        setFeedback('Failed to load SOP details.');
-      }
-    }
-
-    void loadSop();
-  }, [selectedSopId]);
-
-  useEffect(() => {
-    if (!selectedThreadId) {
-      setMessages([]);
-      return;
-    }
-
-    async function loadThread() {
-      if (!selectedThreadId) return;
-      try {
-        const thread = await getThread(selectedThreadId);
-        setMessages(thread.messages);
-        setChatFeedback(null);
-      } catch (error) {
-        console.error(error);
-        setChatFeedback('Failed to load chat messages.');
-      }
-    }
-
-    void loadThread();
-  }, [selectedThreadId]);
 
   useEffect(() => {
     if (!selectedProjectSOP) {
@@ -220,6 +153,27 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
     void loadProjectSOP();
   }, [selectedProjectSOP]);
 
+  useEffect(() => {
+    if (!selectedThreadId) {
+      setMessages([]);
+      return;
+    }
+
+    async function loadThread() {
+      if (!selectedThreadId) return;
+      try {
+        const thread = await getThread(selectedThreadId);
+        setMessages(thread.messages);
+        setChatFeedback(null);
+      } catch (error) {
+        console.error(error);
+        setChatFeedback('Failed to load chat messages.');
+      }
+    }
+
+    void loadThread();
+  }, [selectedThreadId]);
+
   const handleSOPSelect = (id: string) => {
     const sop = sopSummaries.find(s => s.id === id);
     if (sop) {
@@ -235,65 +189,6 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
       const documentTypeSlug = documentTypeToSlug(selection.documentType);
       router.push(`/projects/${projectSlug}/${documentTypeSlug}`);
     }
-  };
-
-  const handleToggleDocumentEdit = () => {
-    if (!activeDocument) return;
-    setIsEditingDocument((value) => !value);
-    if (!isEditingDocument) {
-      // Entering edit mode - initialize editor content with current document
-      setDocumentEditorContent({ ...activeDocument });
-    }
-    setFeedback(null);
-  };
-
-  const handleSaveDocument = async () => {
-    if (!activeDocument || !selectedProjectDocument || !documentEditorContent) return;
-    setIsSavingDocument(true);
-    setFeedback(null);
-
-    try {
-      let updatedDocument: ProjectDocument;
-
-      if (selectedProjectDocument.documentType === 'business-case') {
-        updatedDocument = await updateBusinessCase(
-          selectedProjectDocument.projectId,
-          activeDocument.id,
-          { ...documentEditorContent, updated_by: 'user' }
-        );
-      } else if (selectedProjectDocument.documentType === 'project-charter') {
-        updatedDocument = await updateProjectCharter(
-          selectedProjectDocument.projectId,
-          activeDocument.id,
-          { ...documentEditorContent, updated_by: 'user' }
-        );
-      } else {
-        throw new Error('Unknown document type');
-      }
-
-      setActiveDocument(updatedDocument);
-      setDocumentEditorContent(null);
-      setIsEditingDocument(false);
-      setFeedback('Document saved successfully.');
-    } catch (error) {
-      console.error(error);
-      setFeedback('Failed to save document.');
-    } finally {
-      setIsSavingDocument(false);
-    }
-  };
-
-  const handleCancelDocumentEdit = () => {
-    setDocumentEditorContent(null);
-    setIsEditingDocument(false);
-    setFeedback(null);
-  };
-
-  const handleDocumentEditorChange = (updates: any) => {
-    setDocumentEditorContent((prev: any) => ({
-      ...prev,
-      ...updates
-    }));
   };
 
   const handleAddProject = () => {
@@ -315,7 +210,6 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
     setFeedback(null);
 
     try {
-      // Create the project first
       const newProject = await createProject({
         project_name: data.projectName,
         project_code: data.projectCode,
@@ -324,7 +218,6 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
         created_by: 'user'
       });
 
-      // Create the initial document
       let newDocument: ProjectDocument;
       if (data.documentType === 'business-case') {
         newDocument = await createBusinessCase(newProject.id, {
@@ -343,22 +236,12 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
         });
       }
 
-      // Refresh projects list
       await refreshProjects();
 
-      // Set the new project document as selected
-      setSelectedProjectDocument({
-        projectId: newProject.id,
-        documentType: data.documentType,
-        documentId: newDocument.id
-      });
+      const projectSlug = projectNameToSlug(newProject.project_name);
+      const documentTypeSlug = documentTypeToSlug(data.documentType);
+      router.push(`/projects/${projectSlug}/${documentTypeSlug}`);
 
-      // Set the document and enter edit mode
-      setActiveDocument(newDocument);
-      setIsEditingDocument(true);
-      setDocumentEditorContent(newDocument);
-
-      // Close modal and show success
       setIsAddProjectModalOpen(false);
       setFeedback('Project created successfully.');
 
@@ -384,7 +267,6 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
     if (!activeProjectSOP) return;
     setIsEditingProjectSOP((value) => !value);
     if (!isEditingProjectSOP) {
-      // Entering edit mode - initialize editor content with current content
       const content = typeof activeProjectSOP.content?.markdown === 'string' ? activeProjectSOP.content.markdown : '';
       setProjectSOPEditorContent(content);
       setProjectSOPTitleContent(activeProjectSOP.title);
@@ -412,6 +294,12 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
       setIsEditingProjectSOP(false);
       await refreshProjectSOPs();
       setFeedback('Document type updated successfully.');
+
+      // Check if document type changed and update URL if needed
+      const newDocumentTypeSlug = documentTypeToSlug(updated.document_type as DocumentType);
+      if (newDocumentTypeSlug !== params.documentType) {
+        router.replace(`/document-types/${newDocumentTypeSlug}`);
+      }
     } catch (error) {
       console.error(error);
       setFeedback('Failed to update document type.');
@@ -455,8 +343,8 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
       });
       await refreshProjectSOPs();
 
-      // Select the new Project SOP
-      setSelectedProjectSOP({ sopId: newProjectSOP.id });
+      const documentTypeSlug = documentTypeToSlug(data.documentType as DocumentType);
+      router.push(`/document-types/${documentTypeSlug}`);
 
       setIsAddProjectSOPModalOpen(false);
       setFeedback('Document type created successfully.');
@@ -466,53 +354,6 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
     } finally {
       setIsCreatingProjectSOP(false);
     }
-  };
-
-  const handleToggleEdit = () => {
-    if (!activeSop) return;
-    setIsEditing((value) => !value);
-    setEditorContent(markdown);
-    setTitleContent(activeSop.title);
-    setFeedback(null);
-  };
-
-  const handleSaveSop = async () => {
-    if (!activeSop) return;
-    setIsSaving(true);
-    setFeedback(null);
-    try {
-      const payload = {
-        title: titleContent.trim() || activeSop.title,
-        content: {
-          ...activeSop.content,
-          markdown: editorContent
-        }
-      };
-      const updated = await updateSOP(activeSop.id, payload);
-      setActiveSop(updated);
-      setEditorContent(typeof updated.content?.markdown === 'string' ? updated.content.markdown : '');
-      setTitleContent(updated.title);
-      setIsEditing(false);
-      await refreshSopSummaries();
-      setFeedback('SOP saved successfully.');
-
-      // If title changed, update URL
-      const newSlug = titleToSlug(updated.title);
-      if (newSlug !== params.slug) {
-        router.replace(`/playbook/${newSlug}`);
-      }
-    } catch (error) {
-      console.error(error);
-      setFeedback('Failed to save SOP.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditorContent(markdown);
-    setTitleContent(activeSop?.title || '');
-    setIsEditing(false);
   };
 
   const handleCreateThread = useCallback(async () => {
@@ -619,47 +460,18 @@ export default function PlaybookPage({ params }: PlaybookPageProps) {
       <main className="appMain">
         <div className="appColumn">
           {feedback && <div style={{ marginBottom: '0.75rem', color: '#d23939' }}>{feedback}</div>}
-          {selectedProjectDocument ? (
-            <ProjectDocumentPane
-              document={activeDocument}
-              documentType={selectedProjectDocument.documentType}
-              projectName={projects.find(p => p.id === selectedProjectDocument.projectId)?.project_name}
-              isLoading={isLoadingDocument}
-              isEditing={isEditingDocument}
-              onToggleEdit={handleToggleDocumentEdit}
-              onSave={handleSaveDocument}
-              onCancel={handleCancelDocumentEdit}
-              isSaving={isSavingDocument}
-              editorValue={documentEditorContent}
-              onEditorChange={handleDocumentEditorChange}
-            />
-          ) : selectedProjectSOP ? (
-            <ProjectSOPPane
-              projectSOP={activeProjectSOP}
-              isEditing={isEditingProjectSOP}
-              onToggleEdit={handleToggleProjectSOPEdit}
-              editorValue={projectSOPEditorContent}
-              onEditorChange={setProjectSOPEditorContent}
-              titleValue={projectSOPTitleContent}
-              onTitleChange={setProjectSOPTitleContent}
-              onSave={handleSaveProjectSOP}
-              onCancel={handleCancelProjectSOPEdit}
-              isSaving={isSavingProjectSOP}
-            />
-          ) : (
-            <SOPPane
-              sop={activeSop}
-              isEditing={isEditing}
-              onToggleEdit={handleToggleEdit}
-              editorValue={editorContent}
-              onEditorChange={setEditorContent}
-              titleValue={titleContent}
-              onTitleChange={setTitleContent}
-              onSave={handleSaveSop}
-              onCancel={handleCancelEdit}
-              isSaving={isSaving}
-            />
-          )}
+          <ProjectSOPPane
+            projectSOP={activeProjectSOP}
+            isEditing={isEditingProjectSOP}
+            onToggleEdit={handleToggleProjectSOPEdit}
+            editorValue={projectSOPEditorContent}
+            onEditorChange={setProjectSOPEditorContent}
+            titleValue={projectSOPTitleContent}
+            onTitleChange={setProjectSOPTitleContent}
+            onSave={handleSaveProjectSOP}
+            onCancel={handleCancelProjectSOPEdit}
+            isSaving={isSavingProjectSOP}
+          />
         </div>
         <div className="appColumn">
           {chatFeedback && <div style={{ marginBottom: '0.75rem', color: '#d23939', flexShrink: 0 }}>{chatFeedback}</div>}

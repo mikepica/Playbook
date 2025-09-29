@@ -1,4 +1,4 @@
-import { SOPSummary } from '@/types';
+import { SOPSummary, ProjectSummary, ProjectSOPSummary, DocumentType } from '@/types';
 
 /**
  * Convert a title to a URL-friendly slug
@@ -45,4 +45,38 @@ export function getDefaultSOPSlug(): string {
  */
 export function isDefaultSOP(slug: string): boolean {
   return slug === getDefaultSOPSlug();
+}
+
+/**
+ * Convert a project name to a URL-friendly slug
+ */
+export function projectNameToSlug(projectName: string): string {
+  return titleToSlug(projectName);
+}
+
+/**
+ * Convert a document type to a URL-friendly slug
+ */
+export function documentTypeToSlug(documentType: DocumentType | string): string {
+  return titleToSlug(documentType);
+}
+
+/**
+ * Find a project by its slug from a list of projects
+ */
+export function findProjectBySlug(projects: ProjectSummary[], slug: string): ProjectSummary | undefined {
+  return projects.find(project => {
+    const projectSlug = projectNameToSlug(project.project_name);
+    return projectSlug === slug;
+  });
+}
+
+/**
+ * Find a project SOP by its document type slug from a list of project SOPs
+ */
+export function findProjectSOPBySlug(projectSops: ProjectSOPSummary[], slug: string): ProjectSOPSummary | undefined {
+  return projectSops.find(sop => {
+    const sopSlug = documentTypeToSlug(sop.document_type);
+    return sopSlug === slug;
+  });
 }

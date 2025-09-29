@@ -189,3 +189,33 @@ export interface ProjectDocumentSelection {
   documentType: DocumentType;
   documentId?: string;
 }
+
+export interface ProjectSOPSummary {
+  id: string;
+  document_type: string;
+  title: string;
+  version: number;
+  display_order: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
+export interface ProjectSOP extends ProjectSOPSummary {
+  content: SOPContent;
+  created_at: string;
+}
+
+export interface ProjectSOPHistoryItem {
+  id: string;
+  project_sop_id: string;
+  document_type: string;
+  title: string;
+  version: number;
+  content: SOPContent;
+  edited_by?: string | null;
+  created_at: string;
+}
+
+export interface ProjectSOPSelection {
+  sopId: string;
+}
