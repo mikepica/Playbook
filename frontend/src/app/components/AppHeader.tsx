@@ -10,18 +10,18 @@ interface Props {
   items: SOPSummary[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
-  onRefresh: () => void;
+  onRefresh?: () => Promise<void> | void;
   onAddSOP: () => void;
   projects?: ProjectSummary[];
   selectedProjectDocument?: ProjectDocumentSelection | null;
   onSelectProjectDocument?: (selection: ProjectDocumentSelection) => void;
-  onRefreshProjects?: () => void;
+  onRefreshProjects?: () => Promise<void> | void;
   onAddProject?: () => void;
   // Project SOPs props
   projectSops?: ProjectSOPSummary[];
   selectedProjectSOP?: ProjectSOPSelection | null;
   onSelectProjectSOP?: (selection: ProjectSOPSelection | null) => void;
-  onRefreshProjectSOPs?: () => void;
+  onRefreshProjectSOPs?: () => Promise<void> | void;
   onAddProjectSOP?: () => void;
 }
 
@@ -99,23 +99,21 @@ export function AppHeader({
         </div>
 
         {/* Hierarchical Projects Dropdown */}
-        {onSelectProjectDocument && onRefreshProjects && onAddProject && (
+        {onSelectProjectDocument && onAddProject && (
           <HierarchicalProjectDropdown
             projects={projects}
             selectedProjectDocument={selectedProjectDocument}
             onSelectDocument={onSelectProjectDocument}
-            onRefreshProjects={onRefreshProjects}
             onAddProject={onAddProject}
           />
         )}
 
         {/* Project SOPs Dropdown */}
-        {onSelectProjectSOP && onRefreshProjectSOPs && (
+        {onSelectProjectSOP && (
           <ProjectSOPDropdown
             projectSops={projectSops}
             selectedProjectSOP={selectedProjectSOP}
             onSelectSOP={onSelectProjectSOP}
-            onRefreshProjectSOPs={onRefreshProjectSOPs}
             onAddProjectSOP={onAddProjectSOP}
           />
         )}
@@ -129,22 +127,9 @@ export function AppHeader({
             New Project
           </button>
         )}
-        <button className={styles.refreshButton} type="button" onClick={onRefresh}>
-          Refresh SOPs
-        </button>
-        {onRefreshProjects && (
-          <button className={styles.refreshButton} type="button" onClick={onRefreshProjects}>
-            Refresh Projects
-          </button>
-        )}
         {onAddProjectSOP && (
           <button className={styles.addButton} type="button" onClick={onAddProjectSOP}>
             New Document Type
-          </button>
-        )}
-        {onRefreshProjectSOPs && (
-          <button className={styles.refreshButton} type="button" onClick={onRefreshProjectSOPs}>
-            Refresh Document Types
           </button>
         )}
       </div>

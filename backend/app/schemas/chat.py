@@ -10,6 +10,7 @@ from pydantic import BaseModel
 class ChatThreadBase(BaseModel):
     title: str = "New Thread"
     sop_id: UUID | None = None
+    chat_type: Literal["playbook", "project"] = "playbook"
 
 
 class ChatThreadCreate(ChatThreadBase):

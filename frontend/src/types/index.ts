@@ -30,6 +30,7 @@ export interface ChatThread {
   id: string;
   title: string;
   sop_id?: string | null;
+  chat_type?: 'playbook' | 'project';
   created_at: string;
   updated_at: string;
 }
@@ -182,12 +183,28 @@ export interface ProjectCharter {
 }
 
 export type DocumentType = 'business-case' | 'project-charter';
+export type DocumentTypeOrNone = DocumentType | 'none';
 export type ProjectDocument = BusinessCase | ProjectCharter;
 
 export interface ProjectDocumentSelection {
   projectId: string;
   documentType: DocumentType;
   documentId?: string;
+}
+
+export interface ProjectDocumentModalData {
+  mode: 'new' | 'existing';
+  projectId?: string;
+  projectName?: string;
+  documentType?: DocumentTypeOrNone;
+  projectCode?: string;
+  businessArea?: string;
+  sponsor?: string;
+}
+
+export interface ExistingDocuments {
+  businessCase: boolean;
+  projectCharter: boolean;
 }
 
 export interface ProjectSOPSummary {

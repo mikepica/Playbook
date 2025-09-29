@@ -26,6 +26,7 @@ def list_threads(db: Session = Depends(get_db)) -> ChatThreadList:
                 id=thread.id,
                 title=thread.title,
                 sop_id=thread.sop_id,
+                chat_type=thread.chat_type,
                 created_at=thread.created_at,
                 updated_at=thread.updated_at,
             )
@@ -41,6 +42,7 @@ def create_thread(payload: ChatThreadCreate, db: Session = Depends(get_db)) -> C
         id=thread.id,
         title=thread.title,
         sop_id=thread.sop_id,
+        chat_type=thread.chat_type,
         created_at=thread.created_at,
         updated_at=thread.updated_at,
     )
@@ -56,6 +58,7 @@ def get_thread(thread_id: str, db: Session = Depends(get_db)) -> ChatThreadDetai
         id=thread.id,
         title=thread.title,
         sop_id=thread.sop_id,
+        chat_type=thread.chat_type,
         created_at=thread.created_at,
         updated_at=thread.updated_at,
         messages=[
@@ -81,6 +84,35 @@ def post_message(
 ) -> list[ChatMessageRead]:
     try:
         messages = chat_service.append_message(db, thread_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    # If this is a user message and we got an AI response, trigger title generation in background
+    if payload.role == "user" and len(messages) >= 2:
+        background_tasks.add_task(chat_service.generate_thread_title, db, thread_id)
+
+    return [
+        ChatMessageRead(
+            id=message.id,
+            thread_id=message.thread_id,
+            role=message.role,
+            content=message.content,
+            created_at=message.created_at,
+            updated_at=message.updated_at,
+        )
+        for message in messages
+    ]
+
+
+@router.post("/threads/{thread_id}/messages/project", response_model=list[ChatMessageRead], status_code=status.HTTP_201_CREATED)
+def post_project_message(
+    thread_id: str,
+    payload: ChatMessageCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> list[ChatMessageRead]:
+    try:
+        messages = chat_service.append_project_message(db, thread_id, payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

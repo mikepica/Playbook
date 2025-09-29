@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models import ChatMessage, ChatThread
 from app.schemas.chat import ChatMessageCreate, ChatThreadCreate
 from app.services import sop_service
+from app.services.project_service import BusinessCaseService, ProjectCharterService
 from app.services.llm_provider import llm_client
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def get_thread_with_messages(db: Session, thread_id: str) -> ChatThread | None:
 
 
 def create_thread(db: Session, data: ChatThreadCreate) -> ChatThread:
-    thread = ChatThread(title=data.title or "New Thread", sop_id=data.sop_id)
+    thread = ChatThread(title=data.title or "New Thread", sop_id=data.sop_id, chat_type=data.chat_type)
     db.add(thread)
     db.commit()
     db.refresh(thread)
@@ -83,6 +84,98 @@ def append_message(db: Session, thread_id: str, data: ChatMessageCreate, auto_re
                     "content": f"You are an AI assistant helping with questions about Standard Operating Procedures (SOPs). You have access to all SOPs in the system. Please use the following SOPs to inform your responses and help users understand the procedures and information contained within them.\n\nWhen responding, please format your answers using proper markdown for better readability (use headers, lists, code blocks, bold/italic text, etc. as appropriate).\n\nIMPORTANT: When you reference information from a specific SOP, include an inline citation in the format [SOP: Title] immediately after the relevant information. This helps users know where the information came from. For example: \"Teams should create a project charter [SOP: Project Charter] before beginning work.\"\n\n# Available SOPs\n\n{all_sops_content}\n\nUse the information from these SOPs to provide comprehensive and well-formatted answers to user questions, including inline citations when referencing specific SOPs."
                 }
                 conversation.append(system_message)
+
+        # Add conversation history and current message
+        conversation.extend([*conversation_context, {"role": data.role, "content": data.content}])
+
+        assistant_content = llm_client.generate_reply(conversation)
+        assistant_message = ChatMessage(thread_id=thread_id, role="assistant", content=assistant_content)
+        db.add(assistant_message)
+        messages_to_return.append(assistant_message)
+
+    # Touch the thread so the updated_at trigger fires
+    thread.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    for entry in messages_to_return:
+        db.refresh(entry)
+    db.refresh(thread)
+    return messages_to_return
+
+
+def append_project_message(db: Session, thread_id: str, data: ChatMessageCreate, auto_reply: bool = True) -> list[ChatMessage]:
+    """Append a message to a project chat thread with project document context."""
+    thread = db.get(ChatThread, thread_id)
+    if thread is None:
+        raise ValueError("Chat thread not found")
+
+    conversation_context = [
+        {"role": entry.role, "content": entry.content}
+        for entry in sorted(thread.messages, key=lambda m: m.created_at)
+    ]
+
+    message = ChatMessage(thread_id=thread_id, role=data.role, content=data.content)
+    db.add(message)
+    db.flush()
+
+    messages_to_return = [message]
+
+    if auto_reply and data.role == "user":
+        # Build conversation with ALL project documents as context
+        conversation = []
+
+        # Add ALL project documents content as system context
+        document_sections = []
+
+        try:
+            # Get all business cases
+            business_cases = BusinessCaseService.list_business_cases(db, project_id=None)
+            for bc in business_cases:
+                if hasattr(bc, 'title') and bc.title:
+                    # Build a comprehensive business case summary
+                    content_parts = [f"Project: {bc.title}"]
+                    if hasattr(bc, 'business_area') and bc.business_area:
+                        content_parts.append(f"Business Area: {bc.business_area}")
+                    if hasattr(bc, 'sponsor') and bc.sponsor:
+                        content_parts.append(f"Sponsor: {bc.sponsor}")
+                    if hasattr(bc, 'project_description') and bc.project_description:
+                        content_parts.append(f"Description: {bc.project_description}")
+
+                    content = "\n".join(content_parts)
+                    document_sections.append(f"## Business Case: {bc.title}\n\n{content}")
+
+            # Get all project charters
+            project_charters = ProjectCharterService.list_project_charters(db, project_id=None)
+            for pc in project_charters:
+                if hasattr(pc, 'title') and pc.title:
+                    # Build a comprehensive project charter summary
+                    content_parts = [f"Project: {pc.title}"]
+                    if hasattr(pc, 'sponsor') and pc.sponsor:
+                        content_parts.append(f"Sponsor: {pc.sponsor}")
+                    if hasattr(pc, 'project_manager') and pc.project_manager:
+                        content_parts.append(f"Project Manager: {pc.project_manager}")
+
+                    content = "\n".join(content_parts)
+                    document_sections.append(f"## Project Charter: {pc.title}\n\n{content}")
+
+        except Exception as e:
+            logger.error(f"Error loading project documents: {e}")
+            # Continue without project context if there's an error
+
+        if document_sections:
+            all_documents_content = "\n\n---\n\n".join(document_sections)
+            system_message = {
+                "role": "system",
+                "content": f"You are an AI assistant helping with questions about project documents including business cases and project charters. You have access to all project documents in the system. Please use the following project documents to inform your responses and help users understand project information, status, objectives, and requirements.\n\nWhen responding, please format your answers using proper markdown for better readability (use headers, lists, code blocks, bold/italic text, etc. as appropriate).\n\nIMPORTANT: When you reference information from a specific document, include an inline citation in the format [Document: Title] immediately after the relevant information. This helps users know where the information came from. For example: \"The project aims to improve efficiency [Document: Digital Transformation Charter].\"\n\n# Available Project Documents\n\n{all_documents_content}\n\nUse the information from these project documents to provide comprehensive and well-formatted answers to user questions, including inline citations when referencing specific documents."
+            }
+            conversation.append(system_message)
+        else:
+            # Fallback if no documents found
+            system_message = {
+                "role": "system",
+                "content": "You are an AI assistant helping with questions about project documents. Currently, no project documents are available in the system. Please let the user know that no project documents are currently loaded and suggest they check with their administrator or create some project documents first."
+            }
+            conversation.append(system_message)
 
         # Add conversation history and current message
         conversation.extend([*conversation_context, {"role": data.role, "content": data.content}])

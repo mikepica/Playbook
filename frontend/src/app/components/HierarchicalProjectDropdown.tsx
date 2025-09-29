@@ -8,7 +8,6 @@ interface Props {
   projects: ProjectSummary[];
   selectedProjectDocument?: ProjectDocumentSelection | null;
   onSelectDocument: (selection: ProjectDocumentSelection) => void;
-  onRefreshProjects: () => void;
   onAddProject: () => void;
 }
 
@@ -27,7 +26,6 @@ export function HierarchicalProjectDropdown({
   projects,
   selectedProjectDocument,
   onSelectDocument,
-  onRefreshProjects,
   onAddProject
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);

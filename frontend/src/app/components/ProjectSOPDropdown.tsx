@@ -8,7 +8,6 @@ interface Props {
   projectSops: ProjectSOPSummary[];
   selectedProjectSOP?: ProjectSOPSelection | null;
   onSelectSOP: (selection: ProjectSOPSelection | null) => void;
-  onRefreshProjectSOPs: () => void;
   onAddProjectSOP?: () => void;
 }
 
@@ -16,7 +15,6 @@ export function ProjectSOPDropdown({
   projectSops,
   selectedProjectSOP,
   onSelectSOP,
-  onRefreshProjectSOPs,
   onAddProjectSOP
 }: Props) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -69,15 +67,8 @@ export function ProjectSOPDropdown({
 
       {isDropdownOpen && (
         <div className={styles.dropdownMenu}>
-          <div className={styles.dropdownHeader}>
-            <button
-              type="button"
-              className={styles.actionButton}
-              onClick={onRefreshProjectSOPs}
-            >
-              Refresh
-            </button>
-            {selectedProjectSOP && (
+          {selectedProjectSOP && (
+            <div className={styles.dropdownHeader}>
               <button
                 type="button"
                 className={styles.actionButton}
@@ -85,8 +76,8 @@ export function ProjectSOPDropdown({
               >
                 Clear Selection
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {activeSOPs.length === 0 ? (
             <div className={styles.emptyState}>

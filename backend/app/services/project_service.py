@@ -7,6 +7,7 @@ from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
 
 from app.db.models.project import Project, BusinessCase, ProjectCharter
+from app.db.models.project_sop import ProjectSOP
 from app.schemas.project import (
     ProjectCreate,
     ProjectUpdate,
@@ -54,6 +55,10 @@ class ProjectService:
         db.add(project)
         db.commit()
         db.refresh(project)
+
+        # Auto-create documents for all active document types
+        ProjectService._create_initial_documents(db, project, project_data)
+
         return project
 
     @staticmethod
@@ -122,6 +127,52 @@ class ProjectService:
 
         next_number = max(numbers, default=0) + 1
         return f"{base_code}-{next_number:03d}"
+
+    @staticmethod
+    def _create_initial_documents(db: Session, project: Project, project_data: ProjectCreate) -> None:
+        """Create initial documents for all active document types."""
+        # Get all active document types from ProjectSOPs
+        active_sops = db.query(ProjectSOP).filter(ProjectSOP.is_active == True).all()
+
+        for sop in active_sops:
+            try:
+                if sop.document_type == 'business_case':
+                    # Create business case
+                    business_case = BusinessCase(
+                        project_id=project.id,
+                        title=f"{project.project_name} Business Case",
+                        business_area=project_data.business_area,
+                        sponsor=project_data.sponsor,
+                        status='draft',
+                        is_current_version=True,
+                        created_by=getattr(project_data, 'created_by', None)
+                    )
+                    db.add(business_case)
+
+                elif sop.document_type == 'project_charter':
+                    # Create project charter
+                    charter = ProjectCharter(
+                        project_id=project.id,
+                        title=f"{project.project_name} Project Charter",
+                        sponsor=project_data.sponsor or 'TBD',
+                        status='draft',
+                        is_current_version=True,
+                        created_by=getattr(project_data, 'created_by', None)
+                    )
+                    db.add(charter)
+
+                # For future document types, add more elif conditions here
+
+            except Exception as e:
+                # Log the error but don't fail the project creation
+                print(f"Warning: Failed to create {sop.document_type} for project {project.project_name}: {e}")
+
+        try:
+            db.commit()
+        except Exception as e:
+            # If document creation fails, rollback document changes but keep the project
+            db.rollback()
+            print(f"Warning: Failed to create some documents for project {project.project_name}: {e}")
 
 
 class BusinessCaseService:

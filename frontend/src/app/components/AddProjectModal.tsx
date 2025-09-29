@@ -1,59 +1,58 @@
 'use client';
 
 import { useState } from 'react';
-import { DocumentType } from '@/types';
+import { ProjectSummary, ProjectDocumentModalData } from '@/types';
 import styles from './AddProjectModal.module.css';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: {
-    projectName: string;
-    documentType: DocumentType;
-    projectCode?: string;
-    businessArea?: string;
-    sponsor?: string;
-  }) => Promise<void>;
+  onSave: (data: ProjectDocumentModalData) => Promise<void>;
   isSaving: boolean;
+  projects: ProjectSummary[];
 }
 
-export function AddProjectModal({ isOpen, onClose, onSave, isSaving }: Props) {
+export function AddProjectModal({ isOpen, onClose, onSave, isSaving, projects }: Props) {
   const [projectName, setProjectName] = useState('');
-  const [documentType, setDocumentType] = useState<DocumentType>('business-case');
   const [projectCode, setProjectCode] = useState('');
   const [businessArea, setBusinessArea] = useState('');
   const [sponsor, setSponsor] = useState('');
 
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // Validation
     if (!projectName.trim()) return;
 
     await onSave({
+      mode: 'new',
       projectName: projectName.trim(),
-      documentType,
+      documentType: 'none', // New projects don't specify document type
       projectCode: projectCode.trim() || undefined,
       businessArea: businessArea.trim() || undefined,
       sponsor: sponsor.trim() || undefined,
     });
 
     // Reset form on successful save
+    resetForm();
+  };
+
+  const resetForm = () => {
     setProjectName('');
-    setDocumentType('business-case');
     setProjectCode('');
     setBusinessArea('');
     setSponsor('');
   };
 
   const handleCancel = () => {
-    setProjectName('');
-    setDocumentType('business-case');
-    setProjectCode('');
-    setBusinessArea('');
-    setSponsor('');
+    resetForm();
     onClose();
   };
 
   if (!isOpen) return null;
+
+  const canSubmit = projectName.trim();
 
   return (
     <div className={styles.overlay} onClick={handleCancel}>
@@ -85,22 +84,6 @@ export function AddProjectModal({ isOpen, onClose, onSave, isSaving }: Props) {
               required
               disabled={isSaving}
             />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="document-type" className={styles.label}>
-              Initial Document Type <span className={styles.required}>*</span>
-            </label>
-            <select
-              id="document-type"
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-              className={styles.select}
-              disabled={isSaving}
-            >
-              <option value="business-case">Business Case</option>
-              <option value="project-charter">Project Charter</option>
-            </select>
           </div>
 
           <div className={styles.field}>
@@ -160,7 +143,7 @@ export function AddProjectModal({ isOpen, onClose, onSave, isSaving }: Props) {
             <button
               type="submit"
               className={styles.saveButton}
-              disabled={!projectName.trim() || isSaving}
+              disabled={!canSubmit || isSaving}
             >
               {isSaving ? 'Creating...' : 'Create Project'}
             </button>

@@ -71,7 +71,7 @@ export function AddProjectSOPModal({ isOpen, onClose, onSave, isSaving }: Props)
               required
               disabled={isSaving}
             />
-            <small>Will be converted to lowercase with underscores (e.g., "Risk Register" → "risk_register")</small>
+            <small>Will be converted to lowercase with underscores (e.g., &ldquo;Risk Register&rdquo; → &ldquo;risk_register&rdquo;)</small>
           </div>
 
           <div className={styles.field}>

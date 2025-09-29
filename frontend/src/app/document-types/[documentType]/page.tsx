@@ -11,9 +11,9 @@ import { ChatPane } from '@/app/components/ChatPane';
 import { SOPPane } from '@/app/components/SOPPane';
 import { ProjectDocumentPane } from '@/app/components/ProjectDocumentPane';
 import { ProjectSOPPane } from '@/app/components/ProjectSOPPane';
-import { createSOP, createThread, getSOP, getThread, getSOPSummaries, listThreads, postMessage, updateSOP, getProjectSummaries, getBusinessCases, getProjectCharters, getCurrentBusinessCase, getCurrentProjectCharter, updateBusinessCase, updateProjectCharter, createProject, createBusinessCase, createProjectCharter, getProjectSOPSummaries, getProjectSOP, createProjectSOP, updateProjectSOP } from '@/lib/api';
+import { createSOP, createThread, getSOP, getThread, getSOPSummaries, listThreads, postMessage, postProjectMessage, updateSOP, getProjectSummaries, getBusinessCases, getProjectCharters, getCurrentBusinessCase, getCurrentProjectCharter, updateBusinessCase, updateProjectCharter, createProject, createBusinessCase, createProjectCharter, getProjectSOPSummaries, getProjectSOP, createProjectSOP, updateProjectSOP } from '@/lib/api';
 import { findSOPBySlug, titleToSlug, projectNameToSlug, documentTypeToSlug, findProjectSOPBySlug } from '@/lib/utils';
-import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, ProjectDocumentSelection, ProjectDocument, DocumentType, ProjectSOPSummary, ProjectSOPSelection, ProjectSOP } from '@/types';
+import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, ProjectDocumentSelection, ProjectDocument, DocumentType, ProjectSOPSummary, ProjectSOPSelection, ProjectSOP, ProjectDocumentModalData } from '@/types';
 
 interface DocumentTypePageProps {
   params: {
@@ -199,55 +199,84 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
     setIsAddProjectModalOpen(false);
   };
 
-  const handleCreateProject = async (data: {
-    projectName: string;
-    documentType: DocumentType;
-    projectCode?: string;
-    businessArea?: string;
-    sponsor?: string;
-  }) => {
+  const handleCreateProject = async (data: ProjectDocumentModalData) => {
     setIsCreatingProject(true);
     setFeedback(null);
 
-    try {
-      const newProject = await createProject({
-        project_name: data.projectName,
-        project_code: data.projectCode,
-        business_area: data.businessArea,
-        sponsor: data.sponsor,
-        created_by: 'user'
-      });
+    let createdProject: any = null;
+    let targetProjectId: string;
+    let targetProjectName: string;
 
-      let newDocument: ProjectDocument;
-      if (data.documentType === 'business-case') {
-        newDocument = await createBusinessCase(newProject.id, {
-          title: `${data.projectName} Business Case`,
+    try {
+      if (data.mode === 'new') {
+        // Step 1: Create new project
+        createdProject = await createProject({
+          project_name: data.projectName!,
+          project_code: data.projectCode,
           business_area: data.businessArea,
           sponsor: data.sponsor,
-          status: 'draft',
           created_by: 'user'
         });
+        targetProjectId = createdProject.id;
+        targetProjectName = createdProject.project_name;
       } else {
-        newDocument = await createProjectCharter(newProject.id, {
-          title: `${data.projectName} Project Charter`,
-          sponsor: data.sponsor || 'TBD',
-          status: 'draft',
-          created_by: 'user'
-        });
+        // Use existing project
+        targetProjectId = data.projectId!;
+        targetProjectName = data.projectName!;
+      }
+
+      // Step 2: Create document if specified
+      let newDocument: ProjectDocument | null = null;
+      if (data.documentType && data.documentType !== 'none') {
+        try {
+          if (data.documentType === 'business-case') {
+            newDocument = await createBusinessCase(targetProjectId, {
+              title: `${targetProjectName} Business Case`,
+              business_area: data.businessArea,
+              sponsor: data.sponsor,
+              status: 'draft',
+              created_by: 'user'
+            });
+          } else if (data.documentType === 'project-charter') {
+            newDocument = await createProjectCharter(targetProjectId, {
+              title: `${targetProjectName} Project Charter`,
+              sponsor: data.sponsor || 'TBD',
+              status: 'draft',
+              created_by: 'user'
+            });
+          }
+        } catch (docError) {
+          console.error('Failed to create document:', docError);
+          if (data.mode === 'new' && createdProject) {
+            console.warn('Project created but document creation failed. Project ID:', createdProject.id);
+          }
+          throw new Error(`Failed to create ${data.documentType.replace('-', ' ')}`);
+        }
       }
 
       await refreshProjects();
 
-      const projectSlug = projectNameToSlug(newProject.project_name);
-      const documentTypeSlug = documentTypeToSlug(data.documentType);
-      router.push(`/projects/${projectSlug}/${documentTypeSlug}`);
+      // Navigate to appropriate page if document was created
+      if (newDocument) {
+        const projectSlug = projectNameToSlug(targetProjectName);
+        const documentTypeSlug = documentTypeToSlug(data.documentType as DocumentType);
+        router.push(`/projects/${projectSlug}/${documentTypeSlug}`);
+      }
 
       setIsAddProjectModalOpen(false);
-      setFeedback('Project created successfully.');
+      if (data.mode === 'new') {
+        setFeedback(data.documentType === 'none' ? 'Project created successfully.' : 'Project and document created successfully.');
+      } else {
+        setFeedback('Document added to project successfully.');
+      }
 
     } catch (error) {
-      console.error(error);
-      setFeedback('Failed to create project.');
+      console.error('Project/document creation error:', error);
+      if (createdProject) {
+        setFeedback(`Project was created but failed to create document. Check the project list.`);
+      } else {
+        setFeedback(data.mode === 'new' ? 'Failed to create project.' : 'Failed to add document.');
+      }
     } finally {
       setIsCreatingProject(false);
     }
@@ -356,11 +385,12 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
     }
   };
 
-  const handleCreateThread = useCallback(async () => {
+  const handleCreateThread = useCallback(async (chatType: 'playbook' | 'project' = 'playbook') => {
     try {
       const thread = await createThread({
         title: "New Conversation",
-        sop_id: null
+        sop_id: null,
+        chat_type: chatType
       });
       await refreshThreads();
       setSelectedThreadId(thread.id);
@@ -374,7 +404,7 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
   }, [refreshThreads]);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, chatType: 'playbook' | 'project' = 'playbook') => {
       setIsSending(true);
       setChatFeedback(null);
 
@@ -383,14 +413,18 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
         const isFirstMessage = !threadId || messages.length === 0;
 
         if (!threadId) {
-          const newThreadId = await handleCreateThread();
+          const newThreadId = await handleCreateThread(chatType);
           if (!newThreadId) {
             return;
           }
           threadId = newThreadId;
         }
 
-        const response = await postMessage(threadId, { role: 'user', content });
+        // Use the appropriate API based on chat type
+        const response = chatType === 'project'
+          ? await postProjectMessage(threadId, { role: 'user', content })
+          : await postMessage(threadId, { role: 'user', content });
+
         setMessages((prev) => [...prev, ...response]);
         setSelectedThreadId(threadId);
 
@@ -483,6 +517,7 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
             messages={messages}
             onSendMessage={handleSendMessage}
             isSending={isSending}
+            defaultChatType="playbook"
           />
         </div>
       </main>
@@ -499,6 +534,7 @@ export default function DocumentTypePage({ params }: DocumentTypePageProps) {
         onClose={handleCloseAddProjectModal}
         onSave={handleCreateProject}
         isSaving={isCreatingProject}
+        projects={projects}
       />
 
       <AddProjectSOPModal

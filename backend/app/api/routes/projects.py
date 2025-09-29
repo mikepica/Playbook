@@ -100,11 +100,13 @@ def list_business_cases(project_id: UUID, db: Session = Depends(get_db)) -> Busi
 @router.post("/{project_id}/business-cases", response_model=BusinessCaseRead, status_code=status.HTTP_201_CREATED)
 def create_business_case(project_id: UUID, payload: BusinessCaseCreate, db: Session = Depends(get_db)) -> BusinessCaseRead:
     """Create a new business case for a project."""
-    # Ensure project_id matches the URL parameter
-    payload.project_id = project_id
+    # Create a new payload with the correct project_id from URL
+    payload_dict = payload.model_dump()
+    payload_dict['project_id'] = project_id
+    corrected_payload = BusinessCaseCreate(**payload_dict)
 
     try:
-        business_case = BusinessCaseService.create_business_case(db, payload)
+        business_case = BusinessCaseService.create_business_case(db, corrected_payload)
         return BusinessCaseRead.model_validate(business_case)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -184,11 +186,13 @@ def list_project_charters(project_id: UUID, db: Session = Depends(get_db)) -> Pr
 @router.post("/{project_id}/charters", response_model=ProjectCharterRead, status_code=status.HTTP_201_CREATED)
 def create_project_charter(project_id: UUID, payload: ProjectCharterCreate, db: Session = Depends(get_db)) -> ProjectCharterRead:
     """Create a new project charter for a project."""
-    # Ensure project_id matches the URL parameter
-    payload.project_id = project_id
+    # Create a new payload with the correct project_id from URL
+    payload_dict = payload.model_dump()
+    payload_dict['project_id'] = project_id
+    corrected_payload = ProjectCharterCreate(**payload_dict)
 
     try:
-        charter = ProjectCharterService.create_project_charter(db, payload)
+        charter = ProjectCharterService.create_project_charter(db, corrected_payload)
         return ProjectCharterRead.model_validate(charter)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

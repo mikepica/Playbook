@@ -45,7 +45,7 @@ export async function updateSOP(id: string, payload: { title?: string; content?:
   });
 }
 
-export async function createThread(payload: { title?: string; sop_id?: string | null }) {
+export async function createThread(payload: { title?: string; sop_id?: string | null; chat_type?: 'playbook' | 'project' }) {
   return fetchJSON<ChatThread>(`/chat/threads`, {
     method: 'POST',
     body: JSON.stringify(payload ?? {})
@@ -57,13 +57,20 @@ export async function listThreads() {
 }
 
 export async function getThread(threadId: string) {
-  return fetchJSON<{ id: string; title: string; sop_id?: string | null; created_at: string; updated_at: string; messages: ChatMessage[] }>(
+  return fetchJSON<{ id: string; title: string; sop_id?: string | null; chat_type?: 'playbook' | 'project'; created_at: string; updated_at: string; messages: ChatMessage[] }>(
     `/chat/threads/${threadId}`
   );
 }
 
 export async function postMessage(threadId: string, payload: { role: 'user' | 'assistant'; content: string }) {
   return fetchJSON<ChatMessage[]>(`/chat/threads/${threadId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function postProjectMessage(threadId: string, payload: { role: 'user' | 'assistant'; content: string }) {
+  return fetchJSON<ChatMessage[]>(`/chat/threads/${threadId}/messages/project`, {
     method: 'POST',
     body: JSON.stringify(payload)
   });
@@ -108,7 +115,10 @@ export async function getCurrentBusinessCase(projectId: string) {
 export async function createBusinessCase(projectId: string, payload: Partial<BusinessCase> & { created_by?: string }) {
   return fetchJSON<BusinessCase>(`/projects/${projectId}/business-cases`, {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      project_id: projectId
+    })
   });
 }
 
@@ -135,7 +145,10 @@ export async function getCurrentProjectCharter(projectId: string) {
 export async function createProjectCharter(projectId: string, payload: Partial<ProjectCharter> & { sponsor: string; created_by?: string }) {
   return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters`, {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      project_id: projectId
+    })
   });
 }
 
@@ -173,4 +186,25 @@ export async function deleteProjectSOP(id: string) {
   return fetchJSON<void>(`/project-sops/${id}`, {
     method: 'DELETE'
   });
+}
+
+// Helper function to check which document types exist for a project
+export async function checkProjectDocuments(projectId: string): Promise<{ businessCase: boolean; projectCharter: boolean }> {
+  try {
+    const [businessCaseResponse, charterResponse] = await Promise.allSettled([
+      getCurrentBusinessCase(projectId),
+      getCurrentProjectCharter(projectId)
+    ]);
+
+    return {
+      businessCase: businessCaseResponse.status === 'fulfilled',
+      projectCharter: charterResponse.status === 'fulfilled'
+    };
+  } catch (error) {
+    // If there's an error, assume no documents exist
+    return {
+      businessCase: false,
+      projectCharter: false
+    };
+  }
 }
