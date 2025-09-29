@@ -1,4 +1,4 @@
-import { ChatMessage, ChatThread, SOP, SOPSummary } from '@/types';
+import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, Project, BusinessCase, ProjectCharter } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api';
 
@@ -65,6 +65,83 @@ export async function getThread(threadId: string) {
 export async function postMessage(threadId: string, payload: { role: 'user' | 'assistant'; content: string }) {
   return fetchJSON<ChatMessage[]>(`/chat/threads/${threadId}/messages`, {
     method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+// Project APIs
+export async function getProjectSummaries() {
+  return fetchJSON<{ items: ProjectSummary[] }>(`/projects/`);
+}
+
+export async function getProject(id: string) {
+  return fetchJSON<Project>(`/projects/${id}`);
+}
+
+export async function createProject(payload: { project_name: string; project_code?: string; description?: string; business_area?: string; sponsor?: string; created_by?: string }) {
+  return fetchJSON<Project>(`/projects/`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateProject(id: string, payload: Partial<Project> & { updated_by?: string }) {
+  return fetchJSON<Project>(`/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+// Business Case APIs
+export async function getBusinessCases(projectId: string) {
+  return fetchJSON<{ items: BusinessCase[] }>(`/projects/${projectId}/business-cases`);
+}
+
+export async function getBusinessCase(projectId: string, businessCaseId: string) {
+  return fetchJSON<BusinessCase>(`/projects/${projectId}/business-cases/${businessCaseId}`);
+}
+
+export async function getCurrentBusinessCase(projectId: string) {
+  return fetchJSON<BusinessCase>(`/projects/${projectId}/business-cases/current`);
+}
+
+export async function createBusinessCase(projectId: string, payload: Partial<BusinessCase> & { created_by?: string }) {
+  return fetchJSON<BusinessCase>(`/projects/${projectId}/business-cases`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateBusinessCase(projectId: string, businessCaseId: string, payload: Partial<BusinessCase> & { updated_by?: string }) {
+  return fetchJSON<BusinessCase>(`/projects/${projectId}/business-cases/${businessCaseId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+// Project Charter APIs
+export async function getProjectCharters(projectId: string) {
+  return fetchJSON<{ items: ProjectCharter[] }>(`/projects/${projectId}/charters`);
+}
+
+export async function getProjectCharter(projectId: string, charterId: string) {
+  return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters/${charterId}`);
+}
+
+export async function getCurrentProjectCharter(projectId: string) {
+  return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters/current`);
+}
+
+export async function createProjectCharter(projectId: string, payload: Partial<ProjectCharter> & { sponsor: string; created_by?: string }) {
+  return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateProjectCharter(projectId: string, charterId: string, payload: Partial<ProjectCharter> & { updated_by?: string }) {
+  return fetchJSON<ProjectCharter>(`/projects/${projectId}/charters/${charterId}`, {
+    method: 'PUT',
     body: JSON.stringify(payload)
   });
 }

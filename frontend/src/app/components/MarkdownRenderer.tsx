@@ -131,7 +131,7 @@ export function MarkdownRenderer({ children, className }: Props) {
           h6: ({ children }) => <Heading level={6}>{children}</Heading>,
           a: Link,
           // Handle text nodes to process citations
-          text: ({ children }) => <TextWithCitations>{children}</TextWithCitations>,
+          text: ({ children }) => <TextWithCitations>{String(children)}</TextWithCitations>,
         }}
       >
         {children}

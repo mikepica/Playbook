@@ -1,29 +1,3 @@
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1.5rem;
-  height: 70px;
-  background: linear-gradient(90deg, #1f78ff, #6b5bff);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.brand {
-  font-weight: 600;
-  font-size: 1.25rem;
-}
-
-.nav {
-  display: flex;
-  gap: 0.5rem;
-  flex: 1;
-  margin: 0 1rem;
-}
-
 .dropdown {
   position: relative;
   display: inline-block;
@@ -40,7 +14,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: transform 0.15s ease, background 0.15s ease;
-  min-width: 200px;
+  min-width: 250px;
   justify-content: space-between;
 }
 
@@ -90,29 +64,8 @@
   z-index: 100;
   margin-top: 0.25rem;
   overflow: hidden;
-}
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: transparent;
-  border: none;
-  color: #333;
-  text-align: left;
-  transition: background 0.15s ease;
-}
-
-.dropdownItem:hover {
-  background: rgba(31, 120, 255, 0.1);
-}
-
-.dropdownItem.active {
-  background: rgba(31, 120, 255, 0.2);
-  font-weight: 600;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .emptyState {
@@ -122,10 +75,68 @@
   text-align: center;
 }
 
+.projectGroup {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.projectGroup:last-child {
+  border-bottom: none;
+}
+
+.projectItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: #333;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.projectItem:hover {
+  background: rgba(31, 120, 255, 0.1);
+}
+
+.projectItem.expanded {
+  background: rgba(31, 120, 255, 0.05);
+}
+
+.projectToggle {
+  font-size: 0.75rem;
+  color: #666;
+  min-width: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projectInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.projectName {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.projectMeta {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .statusBadge {
   padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 500;
   text-transform: uppercase;
 }
@@ -145,64 +156,43 @@
   color: rgb(239, 68, 68);
 }
 
-.sopButton {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
-  padding: 0.5rem 1rem;
-  color: inherit;
-  backdrop-filter: blur(4px);
+.documentList {
+  background: rgba(0, 0, 0, 0.02);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.documentItem {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  transition: transform 0.15s ease, background 0.15s ease;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  background: transparent;
+  border: none;
+  color: #555;
+  text-align: left;
+  transition: background 0.15s ease;
+  font-size: 0.85rem;
 }
 
-.sopButton:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.25);
+.documentItem:hover {
+  background: rgba(31, 120, 255, 0.08);
 }
 
-.active {
-  border-color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.title {
+.documentItem.active {
+  background: rgba(31, 120, 255, 0.15);
   font-weight: 600;
+  color: #333;
 }
 
-.meta {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-.actions {
+.documentIcon {
+  font-size: 0.9rem;
+  min-width: 20px;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
 }
 
-.addButton {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 0.75rem;
-  color: inherit;
-  padding: 0.4rem 0.9rem;
-  font-weight: 500;
-}
-
-.addButton:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.refreshButton {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 0.75rem;
-  color: inherit;
-  padding: 0.4rem 0.9rem;
-}
-
-.refreshButton:hover {
-  background: rgba(255, 255, 255, 0.3);
+.documentLabel {
+  flex: 1;
 }
