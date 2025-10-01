@@ -236,3 +236,39 @@ export interface ProjectSOPHistoryItem {
 export interface ProjectSOPSelection {
   sopId: string;
 }
+
+// AI Edit types
+export interface FieldSuggestion {
+  current_value: any;
+  suggested_value: any;
+  reason: string;
+}
+
+export interface AIEditSuggestionRequest {
+  document_type: string;
+  project_id: string;
+  document_id: string;
+  user_instructions: string;
+}
+
+export interface AIEditSuggestionResponse {
+  suggestions: Record<string, FieldSuggestion>;
+  overall_reasoning: string;
+  document_type: string;
+  project_id: string;
+  document_id: string;
+}
+
+export interface AIEditApplyRequest {
+  document_type: string;
+  project_id: string;
+  document_id: string;
+  accepted_changes: Record<string, any>;
+  user_id?: string;
+}
+
+export interface AIEditApplyResponse {
+  success: boolean;
+  updated_document: Record<string, any>;
+  message: string;
+}

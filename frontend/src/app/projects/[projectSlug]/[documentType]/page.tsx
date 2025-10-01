@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AddSOPModal } from '@/app/components/AddSOPModal';
 import { AddProjectModal } from '@/app/components/AddProjectModal';
 import { AddProjectSOPModal } from '@/app/components/AddProjectSOPModal';
+import { AIEditModal } from '@/app/components/AIEditModal';
 import { AppHeader } from '@/app/components/AppHeader';
 import { ChatPane } from '@/app/components/ChatPane';
 import { SOPPane } from '@/app/components/SOPPane';
@@ -45,6 +46,7 @@ export default function ProjectDocumentPage({ params }: ProjectDocumentPageProps
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isAddProjectSOPModalOpen, setIsAddProjectSOPModalOpen] = useState(false);
   const [isCreatingProjectSOP, setIsCreatingProjectSOP] = useState(false);
+  const [isAIEditModalOpen, setIsAIEditModalOpen] = useState(false);
 
   // Project state
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -485,6 +487,25 @@ export default function ProjectDocumentPage({ params }: ProjectDocumentPageProps
     }
   };
 
+  const handleAIEdit = () => {
+    setIsAIEditModalOpen(true);
+  };
+
+  const handleAIEditClose = () => {
+    setIsAIEditModalOpen(false);
+  };
+
+  const handleAIEditSave = async (updatedDocument: any) => {
+    try {
+      // Refresh the document to show the updated version
+      setActiveDocument(updatedDocument);
+      setFeedback('Document updated successfully with AI suggestions.');
+    } catch (error) {
+      console.error(error);
+      setFeedback('AI edit completed but failed to refresh document.');
+    }
+  };
+
   return (
     <div className="appShell">
       <AppHeader
@@ -519,6 +540,7 @@ export default function ProjectDocumentPage({ params }: ProjectDocumentPageProps
             isSaving={isSavingDocument}
             editorValue={documentEditorContent}
             onEditorChange={handleDocumentEditorChange}
+            onAIEdit={handleAIEdit}
           />
         </div>
         <div className="appColumn">
@@ -557,6 +579,17 @@ export default function ProjectDocumentPage({ params }: ProjectDocumentPageProps
         onSave={handleCreateProjectSOP}
         isSaving={isCreatingProjectSOP}
       />
+
+      {activeDocument && selectedProjectDocument && (
+        <AIEditModal
+          isOpen={isAIEditModalOpen}
+          onClose={handleAIEditClose}
+          documentType={selectedProjectDocument.documentType}
+          projectId={selectedProjectDocument.projectId}
+          documentId={activeDocument.id}
+          onSave={handleAIEditSave}
+        />
+      )}
     </div>
   );
 }

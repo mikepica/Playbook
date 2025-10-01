@@ -18,6 +18,7 @@ interface Props {
   isSaving?: boolean;
   editorValue?: any;
   onEditorChange?: (value: any) => void;
+  onAIEdit?: () => void;
 }
 
 function formatDate(dateString?: string): string {
@@ -270,7 +271,8 @@ export function ProjectDocumentPane({
   onCancel,
   isSaving = false,
   editorValue,
-  onEditorChange
+  onEditorChange,
+  onAIEdit
 }: Props) {
 
   if (isLoading) {
@@ -318,6 +320,16 @@ export function ProjectDocumentPane({
           {projectName && <p className={styles.projectName}>{projectName}</p>}
         </div>
         <div className={styles.actions}>
+          {onAIEdit && !isEditing && (
+            <button
+              type="button"
+              className={styles.aiEditButton}
+              onClick={onAIEdit}
+              title="Edit with AI - Get suggestions based on your project SOP"
+            >
+              ✨ Edit with AI
+            </button>
+          )}
           {onToggleEdit && (
             <label className={styles.toggleLabel}>
               <input type="checkbox" checked={isEditing} onChange={onToggleEdit} />

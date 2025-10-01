@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import chat, sops, projects, project_sops
+from app.api.routes import chat, sops, projects, project_sops, ai_edits
 
 app = FastAPI(title="PMO Playbook API", version="0.1.0")
 
@@ -19,6 +19,7 @@ app.include_router(sops.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(project_sops.router, prefix="/api")
+app.include_router(ai_edits.router, prefix="/api/ai-edits")
 
 
 @app.get("/health", tags=["health"])

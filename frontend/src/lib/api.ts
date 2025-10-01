@@ -1,4 +1,4 @@
-import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, Project, BusinessCase, ProjectCharter, ProjectSOP, ProjectSOPSummary } from '@/types';
+import { ChatMessage, ChatThread, SOP, SOPSummary, ProjectSummary, Project, BusinessCase, ProjectCharter, ProjectSOP, ProjectSOPSummary, AIEditSuggestionRequest, AIEditSuggestionResponse, AIEditApplyRequest, AIEditApplyResponse } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api';
 
@@ -207,4 +207,19 @@ export async function checkProjectDocuments(projectId: string): Promise<{ busine
       projectCharter: false
     };
   }
+}
+
+// AI Edit APIs
+export async function generateAIEditSuggestions(request: AIEditSuggestionRequest): Promise<AIEditSuggestionResponse> {
+  return fetchJSON<AIEditSuggestionResponse>(`/ai-edits/suggest`, {
+    method: 'POST',
+    body: JSON.stringify(request)
+  });
+}
+
+export async function applyAIEditSuggestions(request: AIEditApplyRequest): Promise<AIEditApplyResponse> {
+  return fetchJSON<AIEditApplyResponse>(`/ai-edits/apply`, {
+    method: 'POST',
+    body: JSON.stringify(request)
+  });
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import styles from './AddSOPModal.module.css';
+import styles from './AddProjectSOPModal.module.css';
 
 interface Props {
   isOpen: boolean;
@@ -106,8 +106,8 @@ export function AddProjectSOPModal({ isOpen, onClose, onSave, isSaving }: Props)
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="# Document Type Template&#10;&#10;## Purpose&#10;This document type is used for...&#10;&#10;## Key Sections&#10;- Section 1&#10;- Section 2&#10;&#10;## Usage&#10;Instructions for using this document type..."
-              rows={12}
+              placeholder={"# Document Type Template\n\n## Purpose\nThis document type is used for...\n\n## Key Sections\n- Section 1\n- Section 2\n\n## Usage\nInstructions for using this document type..."}
+              rows={8}
               disabled={isSaving}
             />
           </div>
