@@ -14,6 +14,44 @@ from app.services.project_service import BusinessCaseService, ProjectCharterServ
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# ENUM VALUE CONSTRAINTS (from database CHECK constraints)
+# ============================================================================
+
+VALID_URGENCY_VALUES = {'low', 'medium', 'high', 'critical'}
+
+VALID_BUSINESS_CASE_STATUS_VALUES = {
+    'draft', 'review_requested', 'under_review', 'revisions_required',
+    'approved', 'rejected', 'archived'
+}
+
+VALID_PROJECT_CHARTER_STATUS_VALUES = {
+    'draft', 'review_requested', 'under_review', 'revisions_required',
+    'approved', 'active', 'superseded', 'cancelled', 'archived'
+}
+
+VALID_BUSINESS_CASE_APPROVAL_LEVEL_VALUES = {
+    'department', 'divisional', 'executive', 'board'
+}
+
+VALID_PROJECT_CHARTER_APPROVAL_LEVEL_VALUES = {
+    'pm', 'sponsor', 'steering_committee', 'executive'
+}
+
+VALID_RISK_TOLERANCE_VALUES = {'low', 'medium', 'high'}
+
+# ============================================================================
+# REQUIRED FIELDS (from database NOT NULL constraints)
+# ============================================================================
+
+BUSINESS_CASE_REQUIRED_FIELDS = set()  # No NOT NULL fields besides system fields
+
+PROJECT_CHARTER_REQUIRED_FIELDS = {'sponsor'}  # sponsor is NOT NULL in database
+
+# ============================================================================
+# FIELD TYPE SCHEMAS
+# ============================================================================
+
 # Field type schema for BusinessCase
 BUSINESS_CASE_FIELD_TYPES = {
     # Simple string fields
@@ -28,14 +66,22 @@ BUSINESS_CASE_FIELD_TYPES = {
     'recommendation_rationale': str,
     'status': str,
     'approval_level': str,
+    'approved_by': str,
+    'version': str,
 
     # Date fields
     'proposed_start_date': date,
     'proposed_end_date': date,
+    'submitted_date': date,
+    'approved_date': date,
 
     # Integer fields
     'estimated_duration_months': int,
     'payback_period_months': int,
+
+    # Decimal fields (represented as float in Python before conversion)
+    'roi_percentage': float,
+    'npv_value': float,
 
     # List of dict fields
     'approvals': list,
@@ -58,6 +104,68 @@ BUSINESS_CASE_FIELD_TYPES = {
     # Dict fields
     'costs': dict,
     'benefits': dict,
+}
+
+# Field type schema for ProjectCharter
+PROJECT_CHARTER_FIELD_TYPES = {
+    # Simple string fields
+    'title': str,
+    'sponsor': str,  # REQUIRED - NOT NULL in database
+    'project_manager': str,
+    'governance_structure': str,
+    'business_case_summary': str,
+    'strategic_alignment': str,
+    'project_objectives': str,
+    'acceptance_criteria': str,
+    'change_control_process': str,
+    'status': str,
+    'approval_level': str,
+    'approved_by': str,
+    'approval_comments': str,
+    'risk_tolerance': str,
+    'version': str,
+
+    # Date fields
+    'charter_date': date,
+    'sign_off_date': date,
+    'effective_date': date,
+    'review_date': date,
+    'expiry_date': date,
+    'submitted_date': date,
+    'approved_date': date,
+
+    # Integer fields
+    'schedule_tolerance': int,
+
+    # Decimal fields
+    'budget_authority': float,
+    'budget_tolerance': float,
+
+    # List of dict fields
+    'steering_committee': list,
+    'project_team': list,
+    'key_stakeholders': list,
+    'external_dependencies': list,
+    'business_benefits': list,
+    'success_criteria': list,
+    'scope_deliverables': list,
+    'assumptions': list,
+    'constraints': list,
+    'key_dates_milestones': list,
+    'critical_deadlines': list,
+    'threats_opportunities': list,
+    'escalation_criteria': list,
+    'decision_authority': list,
+    'reporting_requirements': list,
+    'compliance_requirements': list,
+    'change_log': list,
+
+    # List of string fields
+    'scope_exclusions': list,
+    'quality_standards': list,
+
+    # Dict fields
+    'resource_requirements': dict,
 }
 
 
@@ -95,6 +203,18 @@ def _coerce_field_value(field_name: str, value: Any, expected_type: type) -> Any
             return int(value)
         except (ValueError, TypeError):
             logger.warning(f"Could not convert {field_name}={value} to int, skipping")
+            return None
+
+    # Handle float/Decimal type (for roi_percentage, npv_value, budget_authority, etc.)
+    if expected_type == float:
+        try:
+            if isinstance(value, str):
+                # Remove any non-numeric characters except minus sign and decimal point
+                cleaned = ''.join(c for c in value if c.isdigit() or c in '.-')
+                return float(cleaned) if cleaned and cleaned not in ('-', '.', '-.') else None
+            return float(value)
+        except (ValueError, TypeError):
+            logger.warning(f"Could not convert {field_name}={value} to float, skipping")
             return None
 
     # Handle date type
@@ -191,7 +311,7 @@ def validate_and_coerce_changes(
     document_type: str
 ) -> Dict[str, Any]:
     """
-    Validate and coerce field values to match expected schema types.
+    Validate and coerce field values to match expected schema types and database constraints.
 
     Args:
         changes: Dictionary of field names to new values
@@ -199,15 +319,25 @@ def validate_and_coerce_changes(
 
     Returns:
         Dictionary with validated and coerced values
+
+    Raises:
+        ValueError: If validation fails (constraint violation, required field is null, etc.)
     """
     if document_type == 'business-case':
         field_types = BUSINESS_CASE_FIELD_TYPES
+        required_fields = BUSINESS_CASE_REQUIRED_FIELDS
+        valid_status_values = VALID_BUSINESS_CASE_STATUS_VALUES
+        valid_approval_level_values = VALID_BUSINESS_CASE_APPROVAL_LEVEL_VALUES
+    elif document_type == 'project-charter':
+        field_types = PROJECT_CHARTER_FIELD_TYPES
+        required_fields = PROJECT_CHARTER_REQUIRED_FIELDS
+        valid_status_values = VALID_PROJECT_CHARTER_STATUS_VALUES
+        valid_approval_level_values = VALID_PROJECT_CHARTER_APPROVAL_LEVEL_VALUES
     else:
-        # For now, use same schema for project charter
-        # TODO: Add PROJECT_CHARTER_FIELD_TYPES if schemas differ
-        field_types = BUSINESS_CASE_FIELD_TYPES
+        raise ValueError(f"Unknown document type: {document_type}")
 
     validated_changes = {}
+    validation_errors = []
 
     for field_name, value in changes.items():
         # Skip system fields
@@ -227,14 +357,60 @@ def validate_and_coerce_changes(
         # Coerce value to expected type
         try:
             coerced_value = _coerce_field_value(field_name, value, expected_type)
+
+            # Check if required field is being set to None
+            if field_name in required_fields and coerced_value is None:
+                validation_errors.append(
+                    f"Field '{field_name}' is required and cannot be null or empty"
+                )
+                continue
+
             if coerced_value is not None:
+                # Validate enum constraints for specific fields
+                if field_name == 'urgency' and isinstance(coerced_value, str):
+                    if coerced_value not in VALID_URGENCY_VALUES:
+                        validation_errors.append(
+                            f"Field 'urgency' has invalid value '{coerced_value}'. "
+                            f"Must be one of: {', '.join(sorted(VALID_URGENCY_VALUES))}"
+                        )
+                        continue
+
+                elif field_name == 'status' and isinstance(coerced_value, str):
+                    if coerced_value not in valid_status_values:
+                        validation_errors.append(
+                            f"Field 'status' has invalid value '{coerced_value}'. "
+                            f"Must be one of: {', '.join(sorted(valid_status_values))}"
+                        )
+                        continue
+
+                elif field_name == 'approval_level' and isinstance(coerced_value, str):
+                    if coerced_value not in valid_approval_level_values:
+                        validation_errors.append(
+                            f"Field 'approval_level' has invalid value '{coerced_value}'. "
+                            f"Must be one of: {', '.join(sorted(valid_approval_level_values))}"
+                        )
+                        continue
+
+                elif field_name == 'risk_tolerance' and isinstance(coerced_value, str):
+                    if coerced_value not in VALID_RISK_TOLERANCE_VALUES:
+                        validation_errors.append(
+                            f"Field 'risk_tolerance' has invalid value '{coerced_value}'. "
+                            f"Must be one of: {', '.join(sorted(VALID_RISK_TOLERANCE_VALUES))}"
+                        )
+                        continue
+
                 validated_changes[field_name] = coerced_value
             else:
                 logger.warning(f"Skipping field {field_name} due to coercion failure")
         except Exception as e:
             logger.error(f"Error coercing field {field_name}: {e}")
-            # Skip this field
+            validation_errors.append(f"Field '{field_name}': {str(e)}")
             continue
+
+    # If there are validation errors, raise them all at once
+    if validation_errors:
+        error_message = "Database constraint validation failed:\n- " + "\n- ".join(validation_errors)
+        raise ValueError(error_message)
 
     return validated_changes
 
@@ -273,7 +449,20 @@ def generate_ai_suggestions(
     elif isinstance(project_sop.content, str):
         sop_content = project_sop.content
 
-    # Build the system prompt with explicit type requirements
+    # Build constraint information for the prompt
+    if document_type == 'business-case':
+        required_fields_str = "None (all fields are optional)"
+        status_values = ', '.join(sorted(VALID_BUSINESS_CASE_STATUS_VALUES))
+        approval_level_values = ', '.join(sorted(VALID_BUSINESS_CASE_APPROVAL_LEVEL_VALUES))
+    else:  # project-charter
+        required_fields_str = "sponsor (REQUIRED - cannot be null or empty)"
+        status_values = ', '.join(sorted(VALID_PROJECT_CHARTER_STATUS_VALUES))
+        approval_level_values = ', '.join(sorted(VALID_PROJECT_CHARTER_APPROVAL_LEVEL_VALUES))
+
+    urgency_values = ', '.join(sorted(VALID_URGENCY_VALUES))
+    risk_tolerance_values = ', '.join(sorted(VALID_RISK_TOLERANCE_VALUES))
+
+    # Build the system prompt with explicit type requirements and constraints
     system_prompt = f"""You are an AI assistant helping to update project documents based on Standard Operating Procedures and user instructions.
 
 DOCUMENT TYPE: {document_type}
@@ -313,15 +502,20 @@ You MUST maintain correct data types for each field:
 
 STRING FIELDS (use plain strings):
 - title, business_area, strategic_alignment, business_driver, urgency, sponsor
-- project_description, recommended_option, recommendation_rationale, status
+- project_description, recommended_option, recommendation_rationale, status, approval_level
+- governance_structure, project_objectives, acceptance_criteria, etc.
 
 DATE FIELDS (use ISO date format YYYY-MM-DD):
-- proposed_start_date, proposed_end_date
+- proposed_start_date, proposed_end_date, charter_date, sign_off_date, effective_date, etc.
 Example: "2024-03-15"
 
 INTEGER FIELDS (use numbers without quotes):
-- estimated_duration_months, payback_period_months
+- estimated_duration_months, payback_period_months, schedule_tolerance
 Example: 6
+
+DECIMAL/FLOAT FIELDS (use numbers with decimals):
+- roi_percentage, npv_value, budget_authority, budget_tolerance
+Example: 12.5 or 100000.00
 
 ARRAY OF OBJECTS (use JSON arrays with objects):
 - objectives: [{{"timeline": "...", "objective": "...", "measurable_outcome": "..."}}]
@@ -332,15 +526,31 @@ ARRAY OF OBJECTS (use JSON arrays with objects):
 ARRAY OF STRINGS (use JSON arrays with strings):
 - scope_in: ["item1", "item2", "item3"]
 - scope_out: ["item1", "item2"]
+- quality_standards: ["ISO 9001", "GDPR compliance"]
 
 OBJECT FIELDS (use JSON objects):
 - costs: {{"development": 50000, "maintenance": 10000}}
 - benefits: {{"cost_savings": 100000, "revenue_increase": 50000}}
+- resource_requirements: {{"fte": 5, "budget": 100000}}
+
+DATABASE CONSTRAINTS - CRITICAL:
+You MUST respect these database constraints or the update will fail:
+
+REQUIRED FIELDS (cannot be null):
+{required_fields_str}
+
+VALID VALUES FOR ENUM FIELDS (must use exact values):
+- urgency: {urgency_values}
+- status: {status_values}
+- approval_level: {approval_level_values}
+- risk_tolerance: {risk_tolerance_values}
 
 IMPORTANT GUIDELINES:
 - Only suggest changes for fields that actually need updating based on the instructions
 - Keep existing values that are appropriate and don't conflict with the SOP
 - Ensure suggestions align with the SOP requirements
+- NEVER suggest null/empty values for required fields
+- ALWAYS use exact enum values from the valid values list above
 - Provide clear reasoning for each suggested change
 - For array fields (like objectives, risks), suggest the COMPLETE updated array, not just new items
 - Maintain proper JSON formatting and data types as specified above
